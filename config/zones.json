@@ -1,0 +1,4 @@
+{
+  "_comment": "Public zone. The home zone lives in places.local.json, which is git-ignored.",
+  "park": {"name": "Parque Ibirapuera", "lat": -23.5874, "lon": -46.6576, "radius_m": 1500}
+}

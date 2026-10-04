@@ -2,9 +2,10 @@
 
 **How long will the bus ride between home and Parque Ibirapuera take, right now?**
 
-Google Maps gives one number from the timetable. This project estimates the
-real door-to-door time (walk, wait and ride) from the live GPS positions of
-the São Paulo buses that make the trip, and says how bad a bad day gets.
+Google Maps gives one number from the timetable. This project measures the
+real ride time from the live GPS positions of the São Paulo buses that make
+the trip, and says how bad a bad day gets. It is a deliberately simple model,
+built to show a data pipeline end to end rather than to plan real trips.
 
 > **Status:** collecting data. The collector has been running in AWS every
 > minute since 2026-10-04; the Databricks pipeline and the estimates come next.
@@ -26,13 +27,15 @@ flowchart LR
    response untouched in S3, partitioned by date and hour.
 2. **Clean** *(next)*. Databricks turns the raw snapshots into one row per
    vehicle and minute: deduplicated, with GPS noise and stale positions removed.
-3. **Measure** *(next)*. Each vehicle seen near the boarding point and later
-   near the destination is one observed trip. The wait comes from the real
-   headway between buses, counting every line that serves the stretch, since
-   any of them will do.
-4. **Estimate** *(next)*. Typical (p50) and bad-day (p90) times by direction,
-   day of week and 15-minute slot, benchmarked against the arrival predictions
-   SPTrans publishes itself.
+3. **Measure** *(next)*. Two circular zones, one around home and one around
+   the park. A bus seen in one zone and later in the other is one observed
+   trip; the ride time is the gap between the two sightings. All six lines
+   count as a single option, since any of them makes the trip.
+4. **Estimate** *(next)*. Typical (p50) and bad-day (p90) ride times by
+   direction, hour of day, and weekday versus weekend.
+
+Out of scope on purpose: walking, waiting at the stop, exact bus stops and
+route shapes. Each would add precision, none would change the pipeline.
 
 ## Design decisions
 
@@ -64,6 +67,7 @@ flowchart LR
 |---|---|
 | [`collector/`](collector/) | Lambda handler and the list of bus lines to follow |
 | [`infra/`](infra/) | Terraform: S3, Lambda, IAM roles, schedule |
+| [`config/`](config/) | The park zone. The home zone stays in a git-ignored local file |
 
 ## Running it yourself
 
