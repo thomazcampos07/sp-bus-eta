@@ -14,3 +14,6 @@ __pycache__/
 # Local secrets and config (e.g. the home stop)
 .env
 *.local.json
+
+# Databricks bundle local state
+.databricks/

@@ -1,0 +1,105 @@
+bundle:
+  name: sp-bus-eta
+
+variables:
+  catalog:
+    default: workspace
+  schema:
+    default: sp_bus_eta
+  bucket:
+    default: sp-bus-eta-data-669958786709
+  raw_prefix:
+    default: raw/positions
+  secret_scope:
+    default: sp-bus-eta
+  # The park zone is public; the home zone lives in the secret scope.
+  park_lat:
+    default: "-23.5874"
+  park_lon:
+    default: "-46.6576"
+  park_radius_m:
+    default: "1500"
+
+targets:
+  default:
+    default: true
+    workspace:
+      host: https://dbc-a57e0976-e558.cloud.databricks.com
+
+resources:
+  schemas:
+    sp_bus_eta:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: Bus travel times between home and Parque Ibirapuera (sp-bus-eta).
+
+  volumes:
+    landing:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.sp_bus_eta.name}
+      name: landing
+      comment: Mirror of the raw collector files from S3.
+    checkpoints:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.sp_bus_eta.name}
+      name: checkpoints
+      comment: Auto Loader checkpoints.
+
+  jobs:
+    pipeline:
+      name: sp-bus-eta-pipeline
+      # Daily is plenty for travel-time statistics, and keeps the Free Edition
+      # compute quota for ad-hoc runs.
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"
+        timezone_id: America/Sao_Paulo
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            dependencies:
+              - boto3
+      tasks:
+        - task_key: sync_raw
+          environment_key: default
+          spark_python_task:
+            python_file: src/sync_raw.py
+            parameters:
+              - --bucket=${var.bucket}
+              - --prefix=${var.raw_prefix}
+              - --landing=/Volumes/${var.catalog}/${var.schema}/landing/positions
+              - --secret-scope=${var.secret_scope}
+
+        - task_key: bronze
+          depends_on: [{task_key: sync_raw}]
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze.py
+            parameters:
+              - --landing=/Volumes/${var.catalog}/${var.schema}/landing/positions
+              - --checkpoint=/Volumes/${var.catalog}/${var.schema}/checkpoints/bronze_positions
+              - --table=${var.catalog}.${var.schema}.bronze_positions
+
+        - task_key: silver
+          depends_on: [{task_key: bronze}]
+          environment_key: default
+          spark_python_task:
+            python_file: src/silver.py
+            parameters:
+              - --bronze=${var.catalog}.${var.schema}.bronze_positions
+              - --table=${var.catalog}.${var.schema}.silver_vehicle_positions
+
+        - task_key: gold
+          depends_on: [{task_key: silver}]
+          environment_key: default
+          spark_python_task:
+            python_file: src/gold.py
+            parameters:
+              - --silver=${var.catalog}.${var.schema}.silver_vehicle_positions
+              - --trips=${var.catalog}.${var.schema}.gold_trips
+              - --stats=${var.catalog}.${var.schema}.gold_ride_time_stats
+              - --park-lat=${var.park_lat}
+              - --park-lon=${var.park_lon}
+              - --park-radius-m=${var.park_radius_m}
+              - --secret-scope=${var.secret_scope}
