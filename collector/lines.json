@@ -1,0 +1,53 @@
+{
+  "_comment": "Direct routes between home and Parque Ibirapuera. Both directions are collected.",
+  "lines": [
+    {
+      "line": "669A-10",
+      "direction": 1
+    },
+    {
+      "line": "669A-10",
+      "direction": 2
+    },
+    {
+      "line": "5111-10",
+      "direction": 1
+    },
+    {
+      "line": "5111-10",
+      "direction": 2
+    },
+    {
+      "line": "6500-10",
+      "direction": 1
+    },
+    {
+      "line": "6500-10",
+      "direction": 2
+    },
+    {
+      "line": "6450-10",
+      "direction": 1
+    },
+    {
+      "line": "6450-10",
+      "direction": 2
+    },
+    {
+      "line": "6505-10",
+      "direction": 1
+    },
+    {
+      "line": "6505-10",
+      "direction": 2
+    },
+    {
+      "line": "6913-10",
+      "direction": 1
+    },
+    {
+      "line": "6913-10",
+      "direction": 2
+    }
+  ]
+}
